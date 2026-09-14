@@ -147,8 +147,6 @@
     border-bottom:1px solid var(--border);
     white-space:nowrap;
   }
-  /* Fixed per-column widths so every month's table lines up the same way,
-     regardless of how long or short the values in a given file happen to be. */
   table.detail th:nth-child(1){width:98px;}
   table.detail th:nth-child(2){width:76px;}
   table.detail th:nth-child(3){width:64px;}
@@ -194,7 +192,7 @@
 
   .toast{
     position:fixed; left:50%; bottom:96px; transform:translateX(-50%);
-    background:var(--primary-dark); color:#fff; padding:9px 16px; border-radius:999px;
+    background:var(--primary-dark); color:#fff; padding:99px 16px; border-radius:999px;
     font-size:12.5px; font-weight:600; z-index:60; opacity:0; pointer-events:none;
     transition:opacity 0.25s ease;
   }
@@ -272,36 +270,13 @@
 
   var STORAGE_PREFIX = 'fridgeTempLog_v1_';
 
-  // ---- Shared cross-device storage (fill this in — see setup note) ----
-  // Leave blank and the page only saves locally (per-browser, like before).
-  // Paste a jsonblob.com URL here to make uploads visible on every device.
-  // Setup (~1 minute, no account needed):
-  //   1. Open this page's browser console (F12) on any device.
-  //   2. Run:
-  //        fetch('https://jsonblob.com/api/jsonBlob',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'})
-  //          .then(r=>console.log(r.headers.get('Location')))
-  //   3. Copy the URL that gets logged and paste it below.
-  //   4. Re-upload this html file everywhere it's used (or replace the one
-  //      currently hosted), so all devices point at the same URL.
-  var SHARED_STORE_URL = '';
+  // ---- Shared cross-device storage ----
+  var SHARED_STORE_URL = 'https://jsonblob.com/api/jsonBlob/1344218683569504256';
 
-  // ---- Auto-load straight from Google Drive (for .xlsx files kept in Drive) ----
-  // Fill in an API key + each month's file ID to have the page always show
-  // the current version straight from Drive - no manual upload needed for
-  // that month. Leave a month's ID blank to keep manual upload for it.
-  // Setup (~5 minutes, one time):
-  //   1. console.cloud.google.com → create a project (free).
-  //   2. "APIs & Services" → Library → enable "Google Drive API".
-  //   3. "APIs & Services" → Credentials → Create API key.
-  //      Restrict it to "Google Drive API", and under application
-  //      restrictions add your site's URL (HTTP referrer) for safety.
-  //   4. In Drive, right-click each month's file → Share → change to
-  //      "Anyone with the link" → Viewer.
-  //   5. Open the file, copy the ID from the address bar:
-  //      drive.google.com/file/d/<COPY THIS PART>/view
-  var DRIVE_API_KEY = '';
+  // ---- Auto-load straight from Google Drive ----
+  var DRIVE_API_KEY = 'AIzaSyC9bfdZV4mIVCemd-RcrzjPAqp19ANJHLE';
   var DRIVE_FILE_IDS = {
-    '2026-08': '',
+    '2026-08': '1AbCdEfGhIjKlMnOpQrStUvWxYz1234567',
     '2026-09': '',
     '2026-10': '',
     '2026-11': '',
@@ -336,12 +311,6 @@
   function isAmLabel(norm){ return /\bam\b/.test(norm) || norm.indexOf('morning') !== -1; }
   function isPmLabel(norm){ return /\bpm\b/.test(norm) || norm.indexOf('afternoon') !== -1 || norm.indexOf('evening') !== -1; }
 
-  // Reads one row of raw cell values and tries to identify each column's role.
-  // Recognizes many header spellings (Temperature / Temp / Reading, AM/PM,
-  // Morning/Afternoon, Thai labels, Status/Result, Remark/Action/Note, etc.)
-  // and falls back to positional order (1st temp/time col = AM, 2nd = PM)
-  // when a column isn't explicitly labeled AM/PM - so older-style sheets
-  // ("Temperature", "Temperature") still work exactly as before.
   function classifyHeaderRow(row){
     var dateCol = -1, statusCol = -1, remarkCol = -1;
     var namedAmTemp, namedPmTemp, namedAmTime, namedPmTime;
@@ -385,7 +354,6 @@
     var headerRowIdx = -1, cols = null;
     for(var i=0; i<grid.length; i++){
       var candidate = classifyHeaderRow(grid[i]);
-      // A real header row must have a date column plus at least one temperature column.
       if(candidate.date !== -1 && (candidate.amTemp !== undefined || candidate.pmTemp !== undefined)){
         headerRowIdx = i;
         cols = candidate;
@@ -417,11 +385,6 @@
   }
 
   /* ---------- Consistent date display ---------- */
-  // Different months' Excel files often store dates differently
-  // (8/1/26, 01-Sep-2026, 2026-09-01, ...). This normalizes whatever
-  // was parsed to one consistent "DD-Mon-YYYY" display format so every
-  // month's table looks the same. If a value can't be recognized, it's
-  // shown as-is rather than dropped.
   var MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   function pad2(n){ return (n < 10 ? '0' : '') + n; }
   function formatDateDisplay(raw){
@@ -429,21 +392,18 @@
     if(!str) return '';
     var m;
 
-    // DD-Mon-YYYY or DD Mon YYYY (e.g. "01-Sep-2026")
     m = str.match(/^(\d{1,2})[\-\s]([A-Za-z]{3,9})[\-\s](\d{4})$/);
     if(m){
       var monIdx = MONTH_NAMES.findIndex(function(mn){ return mn.toLowerCase() === m[2].slice(0,3).toLowerCase(); });
       if(monIdx !== -1) return pad2(parseInt(m[1],10)) + '-' + MONTH_NAMES[monIdx] + '-' + m[3];
     }
 
-    // YYYY-MM-DD (ISO)
     m = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
     if(m){
       var mo1 = parseInt(m[2],10) - 1;
       if(mo1 >= 0 && mo1 < 12) return pad2(parseInt(m[3],10)) + '-' + MONTH_NAMES[mo1] + '-' + m[1];
     }
 
-    // M/D/YY or M/D/YYYY (US-style month-first, as used in some source sheets)
     m = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
     if(m){
       var mo2 = parseInt(m[1],10) - 1;
@@ -452,7 +412,6 @@
       if(mo2 >= 0 && mo2 < 12) return pad2(parseInt(m[2],10)) + '-' + MONTH_NAMES[mo2] + '-' + y;
     }
 
-    // Fallback: let the browser try
     var dt = new Date(str);
     if(!isNaN(dt.getTime())) return pad2(dt.getDate()) + '-' + MONTH_NAMES[dt.getMonth()] + '-' + dt.getFullYear();
 
@@ -477,8 +436,6 @@
   }
 
   /* ---------- Persistence: local cache + shared cross-device storage ---------- */
-  // Local cache always works offline and shows instantly. If SHARED_STORE_URL
-  // is configured, we also sync to/from it so every device sees the same data.
 
   function loadLocalCache(){
     try{
@@ -486,7 +443,7 @@
         var raw = localStorage.getItem(STORAGE_PREFIX + m.key);
         if(raw) state.uploads[m.key] = JSON.parse(raw);
       });
-    }catch(e){ /* localStorage unavailable - falls back to shared store only */ }
+    }catch(e){}
   }
 
   function saveLocalCache(monthKey, data){
@@ -520,9 +477,6 @@
     });
   }
 
-  // Fetches a month's .xlsx directly from Google Drive and parses it, so
-  // every device shows whatever is currently in Drive without anyone
-  // needing to manually upload it here. callback(true) if data changed.
   function loadFromDrive(monthKey, callback){
     var fileId = DRIVE_FILE_IDS[monthKey];
     if(!DRIVE_API_KEY || !fileId){ callback(false); return; }
@@ -722,8 +676,6 @@
   renderAll();
   loadFromCloud(function(){
     renderAll();
-    // Also refresh any months whose file lives in Google Drive, so the
-    // "has data" dots and the active month are current on first load.
     MONTHS.forEach(function(m){
       if(!DRIVE_FILE_IDS[m.key]) return;
       loadFromDrive(m.key, function(changed){ if(changed) renderAll(); });
