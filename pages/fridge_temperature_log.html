@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>Fridge Temperature Log</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --bg:#F5F8F9;
+    --surface:#FFFFFF;
+    --surface-alt:#EEF4F5;
+    --primary:#0F6B72;
+    --primary-dark:#0B4F54;
+    --danger:#B23A2E;
+    --danger-bg:#FBEAE8;
+    --danger-border:#E6B4AC;
+    --success:#2E8B57;
+    --success-bg:#E7F4EC;
+    --success-border:#B9DDC5;
+    --neutral-bg:#EFF2F2;
+    --text:#182B2E;
+    --text-muted:#5C7377;
+    --border:#DEE7E8;
+    --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    padding-bottom:88px;
+  }
+  input{font-family:inherit;}
+
+  header.app-head{
+    background:var(--primary-dark);
+    color:#fff;
+    padding:18px 16px 16px;
+    position:sticky;
+    top:0;
+    z-index:20;
+  }
+  .head-row{display:flex; align-items:flex-start; gap:10px;}
+  .head-title{font-size:19px; font-weight:700; letter-spacing:-0.01em; line-height:1.25;}
+  .head-sub{font-size:12.5px; color:#BFE0E2; margin-top:2px;}
+  .range-badge{
+    display:inline-flex; align-items:center; gap:5px;
+    background:rgba(255,255,255,0.1);
+    border:1px solid rgba(255,255,255,0.2);
+    color:#D8F0F1; font-size:11.5px; font-weight:600;
+    padding:4px 9px; border-radius:999px; margin-top:12px;
+    font-variant-numeric:tabular-nums;
+  }
+
+  nav.month-nav{
+    display:flex; gap:8px; overflow-x:auto;
+    padding:12px 14px;
+    background:var(--surface);
+    border-bottom:1px solid var(--border);
+    position:sticky; top:96px; z-index:19;
+    -webkit-overflow-scrolling:touch;
+    scrollbar-width:none;
+  }
+  nav.month-nav::-webkit-scrollbar{display:none;}
+  .month-pill{
+    flex:0 0 auto; padding:8px 15px; border-radius:999px;
+    border:1px solid var(--border);
+    background:var(--surface-alt); color:var(--text-muted);
+    font-size:13.5px; font-weight:600; cursor:pointer; white-space:nowrap;
+  }
+  .month-pill.active{background:var(--primary); border-color:var(--primary); color:#fff;}
+  .month-pill.has-data::after{content:"\25CF"; font-size:8px; margin-left:6px; vertical-align:middle; color:#7FCB9A;}
+  .month-pill.active.has-data::after{color:#B9F0D0;}
+
+  main{padding:12px 14px 12px;}
+
+  .upload-zone{
+    background:var(--surface);
+    border:1.5px dashed var(--border);
+    border-radius:var(--radius);
+    padding:34px 18px;
+    text-align:center;
+  }
+  .upload-zone.drag{border-color:var(--primary); background:var(--surface-alt);}
+  .upload-zone .icon-circle{
+    width:48px; height:48px; border-radius:50%;
+    background:var(--surface-alt);
+    display:flex; align-items:center; justify-content:center;
+    margin:0 auto 12px; color:var(--primary);
+  }
+  .upload-zone h3{font-size:15px; margin:0 0 4px;}
+  .upload-zone p{font-size:12.5px; color:var(--text-muted); margin:0 0 16px;}
+  .upload-btn{
+    display:inline-flex; align-items:center; gap:7px;
+    background:var(--primary); color:#fff; border:none;
+    padding:10px 18px; border-radius:8px;
+    font-size:13.5px; font-weight:600; cursor:pointer;
+  }
+  #fileInput{display:none;}
+
+  .summary-bar{display:flex; gap:10px; margin-bottom:12px;}
+  .stat{flex:1; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:10px 12px;}
+  .stat .num{font-size:19px; font-weight:700; font-variant-numeric:tabular-nums;}
+  .stat .lbl{font-size:11px; color:var(--text-muted); margin-top:1px;}
+  .stat.alert .num{color:var(--danger);}
+  .stat.ok .num{color:var(--success);}
+
+  .file-bar{
+    display:flex; align-items:center; gap:8px;
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:8px; padding:8px 10px; margin-bottom:12px;
+    font-size:12px; color:var(--text-muted);
+  }
+  .file-bar strong{color:var(--text); font-weight:600;}
+  .file-bar .replace-link{
+    margin-left:auto; color:var(--primary); font-weight:600; cursor:pointer; font-size:12px; white-space:nowrap;
+  }
+
+  .table-wrap{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    overflow-x:auto;
+    -webkit-overflow-scrolling:touch;
+  }
+  table.detail{
+    border-collapse:collapse;
+    width:100%;
+    min-width:560px;
+    font-size:12.5px;
+  }
+  table.detail th{
+    text-align:left;
+    background:var(--surface-alt);
+    color:var(--text-muted);
+    font-size:10.5px;
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:0.03em;
+    padding:8px 10px;
+    position:sticky; top:0;
+    border-bottom:1px solid var(--border);
+    white-space:nowrap;
+  }
+  table.detail td{
+    padding:8px 10px;
+    border-bottom:1px solid var(--border);
+    vertical-align:top;
+    font-variant-numeric:tabular-nums;
+    white-space:nowrap;
+  }
+  table.detail td.remark-cell{white-space:normal; min-width:140px;}
+  table.detail tr:last-child td{border-bottom:none;}
+  table.detail tr.row-alert td{background:var(--danger-bg);}
+  table.detail tr.row-normal td{background:var(--success-bg);}
+  .chip{
+    display:inline-flex; align-items:center; gap:4px;
+    font-size:10.5px; font-weight:700; padding:3px 8px; border-radius:999px;
+  }
+  .chip.alert{background:#fff; color:var(--danger); border:1px solid var(--danger-border);}
+  .chip.normal{background:#fff; color:var(--success); border:1px solid var(--success-border);}
+  .chip.empty{background:#fff; color:var(--text-muted); border:1px solid var(--border);}
+
+  footer.actions{
+    position:fixed; bottom:0; left:0; right:0;
+    background:var(--surface); border-top:1px solid var(--border);
+    padding:10px 12px; display:flex; gap:8px; z-index:25;
+    box-shadow:0 -2px 10px rgba(0,0,0,0.05);
+  }
+  .btn{
+    flex:1; display:flex; align-items:center; justify-content:center; gap:6px;
+    padding:11px 6px; border-radius:8px; border:1px solid var(--border);
+    background:var(--surface-alt); color:var(--text);
+    font-size:12px; font-weight:600; cursor:pointer;
+  }
+  .btn[disabled]{opacity:0.45; cursor:not-allowed;}
+  .btn.primary{background:var(--primary); border-color:var(--primary); color:#fff;}
+
+  .toast{
+    position:fixed; left:50%; bottom:96px; transform:translateX(-50%);
+    background:var(--primary-dark); color:#fff; padding:9px 16px; border-radius:999px;
+    font-size:12.5px; font-weight:600; z-index:60; opacity:0; pointer-events:none;
+    transition:opacity 0.25s ease;
+  }
+  .toast.show{opacity:1;}
+
+  .note{font-size:11.5px; color:var(--text-muted); text-align:center; padding:2px 20px 4px; line-height:1.5;}
+
+  .print-header{display:none;}
+  @media print{
+    header.app-head, nav.month-nav, footer.actions, .note, .upload-zone, .file-bar .replace-link{display:none !important;}
+    body{padding-bottom:0; background:#fff;}
+    .table-wrap{border-color:#999 !important; overflow:visible;}
+    table.detail th{position:static;}
+    .print-header{display:block; padding:0 2px;}
+    .print-header h1{font-size:16px; margin:0 0 2px;}
+    .print-header p{font-size:11px; color:#555; margin:0 0 10px;}
+  }
+</style>
+</head>
+<body>
+
+<header class="app-head">
+  <div class="head-row">
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M14 14.76V4.5a2 2 0 0 0-4 0v10.26a4 4 0 1 0 4 0Z"></path>
+      <line x1="12" y1="7" x2="12" y2="14"></line>
+    </svg>
+    <div>
+      <div class="head-title">Fridge Temperature Log</div>
+      <div class="head-sub">August &ndash; December 2026</div>
+    </div>
+  </div>
+  <span class="range-badge">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#D8F0F1" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 8v4l3 2"></path></svg>
+    Acceptable range 2&ndash;8&deg;C
+  </span>
+</header>
+
+<nav class="month-nav" id="monthNav"></nav>
+
+<div class="print-header">
+  <h1 id="printTitle"></h1>
+  <p id="printSub"></p>
+</div>
+
+<main id="mainArea"></main>
+
+<div class="note">Upload each month's completed Excel report to view its full detail here. Nothing is uploaded anywhere &mdash; the file is only read inside this page.</div>
+
+<input type="file" id="fileInput" accept=".xlsx,.xls,.csv">
+
+<footer class="actions">
+  <button class="btn" id="btnCsv" disabled>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+    CSV
+  </button>
+  <button class="btn primary" id="btnPrint" disabled>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+    Print
+  </button>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  var MIN_TEMP = 2, MAX_TEMP = 8;
+  var MONTHS = [
+    {key:'2026-08', label:'Aug 2026', name:'August', year:'2026'},
+    {key:'2026-09', label:'Sep 2026', name:'September', year:'2026'},
+    {key:'2026-10', label:'Oct 2026', name:'October', year:'2026'},
+    {key:'2026-11', label:'Nov 2026', name:'November', year:'2026'},
+    {key:'2026-12', label:'Dec 2026', name:'December', year:'2026'}
+  ];
+
+  var state = { activeMonth: MONTHS[0].key, uploads: {} };
+
+  function iconAlert(){ return '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>'; }
+  function iconCheck(){ return '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>'; }
+  function iconDash(){ return '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>'; }
+
+  function activeMonthMeta(){ return MONTHS.find(function(m){ return m.key === state.activeMonth; }); }
+
+  function parseWorkbook(workbook, fileName){
+    var sheetName = workbook.SheetNames[0];
+    var ws = workbook.Sheets[sheetName];
+    var grid = XLSX.utils.sheet_to_json(ws, {header:1, raw:false, defval:''});
+
+    var headerRowIdx = -1, cols = {};
+    for(var i=0; i<grid.length; i++){
+      var row = grid[i];
+      var idx = row.findIndex(function(c){ return String(c).trim().toLowerCase() === 'date'; });
+      if(idx !== -1){
+        headerRowIdx = i;
+        cols.date = idx;
+        var tempCols = [], timeCols = [], statusCol = -1, remarkCol = -1;
+        row.forEach(function(c, ci){
+          var t = String(c).trim().toLowerCase();
+          if(t === 'temperature') tempCols.push(ci);
+          if(t === 'time') timeCols.push(ci);
+          if(t.indexOf('status') !== -1) statusCol = ci;
+          if(t.indexOf('remark') !== -1 || t.indexOf('action') !== -1) remarkCol = ci;
+        });
+        cols.amTemp = tempCols[0]; cols.pmTemp = tempCols[1];
+        cols.amTime = timeCols[0]; cols.pmTime = timeCols[1];
+        cols.status = statusCol; cols.remark = remarkCol;
+        break;
+      }
+    }
+    if(headerRowIdx === -1) return {error:'Could not find a "Date" column header in this file.'};
+
+    var title = '';
+    for(var t=0; t<headerRowIdx; t++){
+      var val = (grid[t][0] || '').toString().trim();
+      if(val){ title = val; break; }
+    }
+
+    var rows = [];
+    for(var r=headerRowIdx+1; r<grid.length; r++){
+      var line = grid[r];
+      var dateVal = (line[cols.date] || '').toString().trim();
+      var amTemp = (cols.amTemp!==undefined ? line[cols.amTemp] : '') || '';
+      var pmTemp = (cols.pmTemp!==undefined ? line[cols.pmTemp] : '') || '';
+      var amTime = (cols.amTime!==undefined ? line[cols.amTime] : '') || '';
+      var pmTime = (cols.pmTime!==undefined ? line[cols.pmTime] : '') || '';
+      var statusRaw = (cols.status!==-1 ? line[cols.status] : '') || '';
+      var remark = (cols.remark!==-1 ? line[cols.remark] : '') || '';
+      if(!dateVal && !amTemp && !pmTemp) continue;
+      rows.push({date:dateVal, amTemp:amTemp, amTime:amTime, pmTemp:pmTemp, pmTime:pmTime, statusRaw:String(statusRaw).trim(), remark:remark});
+    }
+    return {title:title, rows:rows, fileName:fileName};
+  }
+
+  function computeStatus(row){
+    if(row.statusRaw){
+      var s = row.statusRaw.toLowerCase();
+      if(s.indexOf('alert') !== -1) return 'alert';
+      if(s.indexOf('normal') !== -1) return 'normal';
+    }
+    var hasAny = row.amTemp !== '' || row.pmTemp !== '';
+    if(!hasAny) return 'empty';
+    var out = false;
+    [row.amTemp, row.pmTemp].forEach(function(v){
+      if(v === '') return;
+      var n = parseFloat(v);
+      if(isNaN(n) || n < MIN_TEMP || n > MAX_TEMP) out = true;
+    });
+    return out ? 'alert' : 'normal';
+  }
+
+  function renderNav(){
+    var nav = document.getElementById('monthNav');
+    nav.innerHTML = '';
+    MONTHS.forEach(function(m){
+      var pill = document.createElement('button');
+      var hasData = !!state.uploads[m.key];
+      pill.className = 'month-pill' + (m.key === state.activeMonth ? ' active' : '') + (hasData ? ' has-data' : '');
+      pill.textContent = m.label;
+      pill.onclick = function(){ state.activeMonth = m.key; renderAll(); };
+      nav.appendChild(pill);
+    });
+  }
+
+  function renderMain(){
+    var main = document.getElementById('mainArea');
+    var meta = activeMonthMeta();
+    var data = state.uploads[state.activeMonth];
+    var btnCsv = document.getElementById('btnCsv'), btnPrint = document.getElementById('btnPrint');
+
+    if(!data){
+      btnCsv.disabled = true; btnPrint.disabled = true;
+      main.innerHTML =
+        '<div class="upload-zone" id="dropZone">' +
+          '<div class="icon-circle">' +
+            '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>' +
+          '</div>' +
+          '<h3>Upload ' + meta.name + ' ' + meta.year + ' report</h3>' +
+          '<p>Choose the completed Excel (.xlsx) temperature log for this month</p>' +
+          '<button class="upload-btn" id="chooseFileBtn">Choose Excel file</button>' +
+        '</div>';
+      document.getElementById('chooseFileBtn').onclick = function(){ document.getElementById('fileInput').click(); };
+
+      var dz = document.getElementById('dropZone');
+      ['dragenter','dragover'].forEach(function(evt){
+        dz.addEventListener(evt, function(e){ e.preventDefault(); dz.classList.add('drag'); });
+      });
+      ['dragleave','drop'].forEach(function(evt){
+        dz.addEventListener(evt, function(e){ e.preventDefault(); dz.classList.remove('drag'); });
+      });
+      dz.addEventListener('drop', function(e){
+        var f = e.dataTransfer.files[0];
+        if(f) handleFile(f);
+      });
+      document.getElementById('printTitle').textContent = '';
+      document.getElementById('printSub').textContent = '';
+      return;
+    }
+
+    btnCsv.disabled = false; btnPrint.disabled = false;
+
+    var logged = 0, alerts = 0;
+    data.rows.forEach(function(row){
+      var st = computeStatus(row);
+      if(st !== 'empty') logged++;
+      if(st === 'alert') alerts++;
+    });
+
+    var rowsHtml = data.rows.map(function(row){
+      var status = computeStatus(row);
+      var rowClass = status === 'alert' ? 'row-alert' : status === 'normal' ? 'row-normal' : '';
+      var chip = status === 'alert' ? '<span class="chip alert">' + iconAlert() + ' Alert</span>'
+               : status === 'normal' ? '<span class="chip normal">' + iconCheck() + ' Normal</span>'
+               : '<span class="chip empty">' + iconDash() + ' &mdash;</span>';
+      return '<tr class="' + rowClass + '">' +
+        '<td>' + (row.date || '&mdash;') + '</td>' +
+        '<td>' + (row.amTemp !== '' ? row.amTemp + '&deg;C' : '&mdash;') + '</td>' +
+        '<td>' + (row.amTime || '&mdash;') + '</td>' +
+        '<td>' + (row.pmTemp !== '' ? row.pmTemp + '&deg;C' : '&mdash;') + '</td>' +
+        '<td>' + (row.pmTime || '&mdash;') + '</td>' +
+        '<td>' + chip + '</td>' +
+        '<td class="remark-cell">' + (row.remark || '') + '</td>' +
+      '</tr>';
+    }).join('');
+
+    main.innerHTML =
+      '<div class="file-bar">' +
+        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>' +
+        '<strong>' + data.fileName + '</strong>' +
+        '<span class="replace-link" id="replaceLink">Replace file</span>' +
+      '</div>' +
+      '<div class="summary-bar">' +
+        '<div class="stat"><div class="num">' + logged + ' / ' + data.rows.length + '</div><div class="lbl">Days logged</div></div>' +
+        '<div class="stat ' + (alerts>0?'alert':'ok') + '"><div class="num">' + alerts + '</div><div class="lbl">Out-of-range alerts</div></div>' +
+      '</div>' +
+      '<div class="table-wrap"><table class="detail">' +
+        '<thead><tr><th>Date</th><th>AM Temp</th><th>AM Time</th><th>PM Temp</th><th>PM Time</th><th>Status</th><th>Remark</th></tr></thead>' +
+        '<tbody>' + rowsHtml + '</tbody>' +
+      '</table></div>';
+
+    document.getElementById('replaceLink').onclick = function(){ document.getElementById('fileInput').click(); };
+
+    document.getElementById('printTitle').textContent = data.title || ('Temperature Log Report \u2014 ' + meta.name + ' ' + meta.year);
+    document.getElementById('printSub').textContent = 'Acceptable range 2\u20138\u00B0C  \u00B7  ' + logged + ' of ' + data.rows.length + ' days logged  \u00B7  ' + alerts + ' alert(s)';
+  }
+
+  function renderAll(){ renderNav(); renderMain(); }
+
+  function showToast(msg){
+    var t = document.getElementById('toast');
+    t.textContent = msg; t.classList.add('show');
+    setTimeout(function(){ t.classList.remove('show'); }, 1800);
+  }
+
+  function handleFile(file){
+    var reader = new FileReader();
+    reader.onload = function(e){
+      try{
+        var data = new Uint8Array(e.target.result);
+        var workbook = XLSX.read(data, {type:'array', cellDates:false});
+        var parsed = parseWorkbook(workbook, file.name);
+        if(parsed.error){ showToast(parsed.error); return; }
+        state.uploads[state.activeMonth] = parsed;
+        renderAll();
+        showToast(activeMonthMeta().label + ' report loaded');
+      }catch(err){
+        showToast('Could not read that file');
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
+  document.getElementById('fileInput').addEventListener('change', function(e){
+    var f = e.target.files[0];
+    if(f) handleFile(f);
+    e.target.value = '';
+  });
+
+  document.getElementById('btnCsv').onclick = function(){
+    var data = state.uploads[state.activeMonth];
+    if(!data) return;
+    var meta = activeMonthMeta();
+    var rowsOut = [
+      [data.title || ('Temperature Log Report - ' + meta.name + ' ' + meta.year)],
+      ['Acceptable temperature is 2 - 8 C'],
+      [],
+      ['Date','AM Temperature','AM Time','PM Temperature','PM Time','Status','Remark/Action']
+    ];
+    data.rows.forEach(function(row){
+      var status = computeStatus(row);
+      rowsOut.push([row.date, row.amTemp, row.amTime, row.pmTemp, row.pmTime, status === 'empty' ? '' : (status === 'alert' ? 'Alert' : 'Normal'), row.remark]);
+    });
+    var csv = rowsOut.map(function(r){
+      return r.map(function(cell){
+        cell = (cell === undefined || cell === null) ? '' : String(cell);
+        return /[",\n]/.test(cell) ? '"' + cell.replace(/"/g,'""') + '"' : cell;
+      }).join(',');
+    }).join('\r\n');
+    var blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'Temperature_Log_' + meta.name + '_' + meta.year + '.csv';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    showToast('CSV exported');
+  };
+
+  document.getElementById('btnPrint').onclick = function(){ window.print(); };
+
+  renderAll();
+})();
+</script>
+</body>
+</html>
