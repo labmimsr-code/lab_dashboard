@@ -240,7 +240,7 @@
 
 <main id="mainArea"></main>
 
-<div class="note">Upload each month's completed Excel report to view its full detail here. Data stays saved until you replace it — or, once a month's Drive file ID is configured, this page reads that file directly so it's always current everywhere.</div>
+<div class="note">This page reads each month directly from the shared Google Sheet, so it's always current for everyone. You can still upload a file manually to override a month on this device only.</div>
 
 <input type="file" id="fileInput" accept=".xlsx,.xls,.csv">
 
@@ -270,17 +270,19 @@
 
   var STORAGE_PREFIX = 'fridgeTempLog_v1_';
 
-  // ---- Shared cross-device storage ----
+  // ---- Shared cross-device storage (manual-upload overrides only) ----
   var SHARED_STORE_URL = 'https://jsonblob.com/api/jsonBlob/1344218683569504256';
 
-  // ---- Auto-load straight from Google Drive ----
-  var DRIVE_API_KEY = 'AIzaSyD-EXAMPLE_KEY_1234567890abcdef';
-  var DRIVE_FILE_IDS = {
-    '2026-08': '1A2b3C4d5E6f7G8h9I0j-AugFileId',
-    '2026-09': '',
-    '2026-10': '',
-    '2026-11': '',
-    '2026-12': ''
+  // ---- Auto-load straight from the shared Google Sheet ----
+  // One spreadsheet, one tab (gid) per month. Public "Anyone with the link" sharing
+  // is required — this uses the public CSV export, no API key needed.
+  var SHEET_ID = '1VCMmKTtA-YzhH-VbMNVtwsrr4j3ZHDYm';
+  var MONTH_GIDS = {
+    '2026-08': '1196769529',
+    '2026-09': '742427976',
+    '2026-10': '1684398315',
+    '2026-11': '2013489874',
+    '2026-12': '1290558150'
   };
 
   var state = { activeMonth: MONTHS[0].key, uploads: {} };
@@ -435,7 +437,7 @@
     return out ? 'alert' : 'normal';
   }
 
-  /* ---------- Persistence: local cache + shared cross-device storage ---------- */
+  /* ---------- Persistence: local cache + shared cross-device storage (manual overrides) ---------- */
 
   function loadLocalCache(){
     try{
@@ -461,7 +463,6 @@
       }
       callback();
     }).catch(function(){
-      showToast('Could not reach shared storage — showing data saved on this device only');
       callback();
     });
   }
@@ -477,24 +478,26 @@
     });
   }
 
+  /* ---------- Load a month directly from the shared Google Sheet (public CSV export) ---------- */
+
   function loadFromDrive(monthKey, callback){
-    var fileId = DRIVE_FILE_IDS[monthKey];
-    if(!DRIVE_API_KEY || !fileId){ callback(false); return; }
-    var url = 'https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(fileId) + '?alt=media&key=' + encodeURIComponent(DRIVE_API_KEY);
+    var gid = MONTH_GIDS[monthKey];
+    if(!SHEET_ID || !gid){ callback(false); return; }
+    var url = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID + '/gviz/tq?tqx=out:csv&gid=' + encodeURIComponent(gid);
     fetch(url).then(function(r){
-      if(!r.ok) throw new Error('drive fetch failed: ' + r.status);
-      return r.arrayBuffer();
-    }).then(function(buf){
-      var workbook = XLSX.read(new Uint8Array(buf), {type:'array', cellDates:false});
+      if(!r.ok) throw new Error('sheet fetch failed: ' + r.status);
+      return r.text();
+    }).then(function(csvText){
+      var workbook = XLSX.read(csvText, {type:'string'});
       var meta = MONTHS.find(function(m){ return m.key === monthKey; });
-      var parsed = parseWorkbook(workbook, meta.name + ' ' + meta.year + ' (synced from Drive)');
+      var parsed = parseWorkbook(workbook, meta.name + ' ' + meta.year + ' (synced from Google Sheets)');
       if(parsed.error){ showToast(meta.label + ': ' + parsed.error); callback(false); return; }
       parsed.fromDrive = true;
       state.uploads[monthKey] = parsed;
       saveLocalCache(monthKey, parsed);
       callback(true);
     }).catch(function(){
-      showToast('Could not load ' + monthKey + ' from Google Drive');
+      showToast('Could not load ' + monthKey + ' from Google Sheets');
       callback(false);
     });
   }
@@ -529,8 +532,8 @@
           '<div class="icon-circle">' +
             '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>' +
           '</div>' +
-          '<h3>Upload ' + meta.name + ' ' + meta.year + ' report</h3>' +
-          '<p>Choose the completed Excel (.xlsx) temperature log for this month</p>' +
+          '<h3>Loading ' + meta.name + ' ' + meta.year + ' report&hellip;</h3>' +
+          '<p>If this doesn\'t load, you can upload the Excel (.xlsx) file for this month manually instead</p>' +
           '<button class="upload-btn" id="chooseFileBtn">Choose Excel file</button>' +
         '</div>';
       document.getElementById('chooseFileBtn').onclick = function(){ document.getElementById('fileInput').click(); };
@@ -599,7 +602,7 @@
     var refreshLink = document.getElementById('refreshDriveLink');
     if(refreshLink){
       refreshLink.onclick = function(){
-        showToast('Refreshing from Drive…');
+        showToast('Refreshing from Google Sheets…');
         loadFromDrive(state.activeMonth, function(changed){ if(changed) renderAll(); });
       };
     }
@@ -628,7 +631,7 @@
         saveLocalCache(state.activeMonth, parsed);
         saveToCloud();
         renderAll();
-        showToast(activeMonthMeta().label + ' report loaded');
+        showToast(activeMonthMeta().label + ' report loaded (manual override)');
       }catch(err){
         showToast('Could not read that file');
       }
@@ -677,7 +680,6 @@
   loadFromCloud(function(){
     renderAll();
     MONTHS.forEach(function(m){
-      if(!DRIVE_FILE_IDS[m.key]) return;
       loadFromDrive(m.key, function(changed){ if(changed) renderAll(); });
     });
   });
