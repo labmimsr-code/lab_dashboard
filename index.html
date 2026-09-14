@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Laboratory Dashboard — Malteser International Thailand</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --font: 'Noto Sans Thai', Arial, sans-serif;
+    --bg:        #f0f4f2;
+    --surface:   #ffffff;
+    --surface2:  #eef2f0;
+    --border:    #ccd7d1;
+    --accent:    #2e7d5e;
+    --red:       #c0392b;
+    --text:      #1e2d27;
+    --text2:     #3d5247;
+    --muted:     #6b8070;
+    --shadow:     0 2px 14px rgba(46,125,94,0.09);
+    --shadow-hov: 0 6px 26px rgba(46,125,94,0.16);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 15px;
+    line-height: 1.65;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image: radial-gradient(circle, rgba(46,125,94,0.06) 1px, transparent 1px);
+    background-size: 28px 28px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .wrap {
+    position: relative;
+    z-index: 1;
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 44px 24px 80px;
+  }
+
+  /* ─── Header ─── */
+  header {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding-bottom: 20px;
+    border-bottom: 2px solid var(--border);
+    margin-bottom: 10px;
+    animation: fadeDown 0.6s ease both;
+  }
+
+  .logo-badge {
+    width: 56px; height: 56px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #2e7d5e, #1d5c45);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 26px; flex-shrink: 0;
+    box-shadow: 0 4px 14px rgba(46,125,94,0.28);
+  }
+
+  .header-text h1 {
+    font-family: var(--font);
+    font-size: clamp(1.3rem, 2.8vw, 1.85rem);
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: -0.01em;
+    line-height: 1.15;
+  }
+
+  .header-text .sub {
+    font-family: var(--font);
+    font-size: 0.78rem;
+    font-weight: 400;
+    color: var(--muted);
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    margin-top: 3px;
+  }
+
+  .red-cross { color: var(--red); }
+
+  /* ─── Section label ─── */
+  .section-label {
+    font-family: var(--font);
+    font-size: 0.69rem;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 32px 0 18px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    animation: fadeUp 0.7s ease both 0.2s;
+  }
+
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1.5px;
+    background: var(--border);
+    border-radius: 2px;
+  }
+
+  /* ─── Cards ─── */
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 18px;
+    margin-bottom: 48px;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 16px;
+    padding: 26px 24px 22px;
+    text-decoration: none;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    transition: transform 0.22s, box-shadow 0.22s, border-color 0.22s;
+    box-shadow: var(--shadow);
+    position: relative;
+    overflow: hidden;
+    animation: fadeUp 0.65s ease both;
+  }
+
+  .card::before {
+    content: '';
+    position: absolute; top:0; left:0; right:0;
+    height: 4px;
+    border-radius: 16px 16px 0 0;
+    background: var(--card-accent, var(--accent));
+  }
+
+  .card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-hov);
+    border-color: var(--card-accent, var(--accent));
+  }
+
+  .card-icon {
+    width: 50px; height: 50px;
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px;
+    background: var(--icon-bg);
+    border: 1.5px solid var(--card-accent);
+    flex-shrink: 0;
+  }
+
+  .card-title {
+    font-family: var(--font);
+    font-weight: 700;
+    font-size: 1rem;
+    line-height: 1.3;
+    color: var(--text);
+  }
+
+  .card-desc {
+    font-family: var(--font);
+    font-size: 0.8rem;
+    color: var(--muted);
+    line-height: 1.65;
+    flex: 1;
+  }
+
+  .card-arrow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 4px;
+  }
+
+  .card-tag {
+    font-family: var(--font);
+    font-size: 0.66rem;
+    font-weight: 600;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--card-accent);
+    background: var(--icon-bg);
+    padding: 3px 10px;
+    border-radius: 20px;
+    border: 1px solid var(--card-accent);
+  }
+
+  .arrow-btn {
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    background: var(--icon-bg);
+    border: 1.5px solid var(--card-accent);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px;
+    color: var(--card-accent);
+    transition: background 0.2s, color 0.2s;
+  }
+
+  .card:hover .arrow-btn { background: var(--card-accent); color: #fff; }
+
+  .card.green  { --card-accent:#2e7d5e; --icon-bg:#e6f4ee; }
+  .card.blue   { --card-accent:#1a6b8a; --icon-bg:#e3f2f8; }
+  .card.amber  { --card-accent:#b45309; --icon-bg:#fef3e2; }
+  .card.purple { --card-accent:#6d3a9c; --icon-bg:#f0eaf8; }
+
+  /* ─── Divider ─── */
+  hr.divider { border:none; border-top:1.5px solid var(--border); margin:8px 0 36px; }
+
+  /* ─── Footer ─── */
+  footer { text-align:center; animation:fadeUp 0.9s ease both 0.5s; }
+
+  .footer-notice {
+    display: inline-flex; align-items: flex-start; gap: 12px;
+    background: #fff8f7; border: 1.5px solid #f5c6be; border-radius: 12px;
+    padding: 14px 22px; font-family: var(--font); font-size: 0.78rem;
+    color: var(--text2); line-height: 1.65; max-width: 620px; text-align: left;
+    box-shadow: 0 2px 10px rgba(192,57,43,0.07);
+  }
+
+  .footer-notice .lock { font-size:1.1em; padding-top:1px; flex-shrink:0; }
+
+  .footer-copy {
+    margin-top: 16px; font-family: var(--font);
+    font-size: 0.69rem; color: #a0b4aa;
+  }
+
+  @keyframes fadeDown { from{opacity:0;transform:translateY(-14px)} to{opacity:1;transform:translateY(0)} }
+  @keyframes fadeUp   { from{opacity:0;transform:translateY(16px)}  to{opacity:1;transform:translateY(0)} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- Header -->
+  <header>
+    <div class="logo-badge">🧪</div>
+    <div class="header-text">
+      <h1>Laboratory Dashboard</h1>
+      <div class="sub">Malteser International Thailand &nbsp;<span class="red-cross">✚</span></div>
+    </div>
+  </header>
+
+  <!-- Cards -->
+  <div class="section-label">Active Dashboards</div>
+  <div class="cards" id="cards-container"></div>
+
+  <hr class="divider">
+
+  <!-- Footer -->
+  <footer>
+    <div class="footer-notice">
+      <span class="lock">🔒</span>
+      <span>
+        The dashboards are developed for <strong>internal use only</strong>.<br>
+        Do not circulate outside the organization.&nbsp;&nbsp;|&nbsp;&nbsp;Malteser International Thailand&nbsp;<span class="red-cross">✚</span>
+      </span>
+    </div>
+    <div class="footer-copy">© Malteser International Thailand — Confidential</div>
+  </footer>
+
+</div>
+<script>
+const ICON_OPTIONS = {
+  "🧪 Lab / Testing":  {emoji:"🧪", color:"green"},
+  "🦟 Malaria":        {emoji:"🦟", color:"blue"},
+  "🩺 ANC / Clinical": {emoji:"🩺", color:"amber"},
+  "📦 Inventory":      {emoji:"📦", color:"purple"},
+  "💊 Medicine":       {emoji:"💊", color:"green"},
+  "📊 Data / Stats":   {emoji:"📊", color:"blue"},
+  "🩸 Blood":          {emoji:"🩸", color:"amber"},
+  "🔬 Microscopy":     {emoji:"🔬", color:"green"},
+  "📋 Report":         {emoji:"📋", color:"blue"},
+  "🏥 Health":         {emoji:"🏥", color:"green"},
+  "🧬 Genomics":       {emoji:"🧬", color:"amber"},
+  "🗄️ Database":       {emoji:"🗄️", color:"purple"},
+};
+
+const DASHBOARDS = [
+  {
+    title:"Laboratory Monthly Testing & Consumption",
+    url:"https://lookerstudio.google.com/reporting/3432d6a8-81c8-47c6-b85c-11c25440afad",
+    tag:"Monthly Data",
+    desc:"Monthly testing volumes, reagent consumption, and supply tracking across laboratory units.",
+    iconKey:"🧪 Lab / Testing"
+  },
+  {
+    title:"Malaria Dashboard",
+    url:"https://lookerstudio.google.com/reporting/618ad962-0e5e-4b90-a864-d7bf3bd468a2",
+    tag:"Malaria",
+    desc:"Malaria case surveillance, RDT and microscopy positivity rates, and trend monitoring.",
+    iconKey:"🦟 Malaria"
+  },
+  {
+    title:"Urine Examination & ANC Dashboard",
+    url:"https://lookerstudio.google.com/reporting/dfbc6d93-8075-44b4-8ce9-98c93441217f",
+    tag:"ANC / Urine",
+    desc:"Antenatal care visit data integrated with urine examination findings and clinical indicators.",
+    iconKey:"🩺 ANC / Clinical"
+  },
+  {
+    title:"Laboratory Inventory",
+    url:"https://lookerstudio.google.com/reporting/97072448-7bc0-4f37-95a9-2a976bc7793f",
+    tag:"Inventory",
+    desc:"Stock levels, reagent inventory, and supply management for laboratory consumables.",
+    iconKey:"📦 Inventory"
+  }
+];
+
+function esc(s) { return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+
+function renderCards() {
+  const c = document.getElementById("cards-container");
+  c.innerHTML = "";
+  DASHBOARDS.forEach((d, i) => {
+    const meta = ICON_OPTIONS[d.iconKey] || {emoji:"📊", color:"green"};
+    const a = document.createElement("a");
+    a.href = d.url || "#";
+    a.target = "_blank"; a.rel = "noopener";
+    a.className = `card ${meta.color}`;
+    a.style.animationDelay = (0.1 + i * 0.1) + "s";
+    a.innerHTML = `
+      <div class="card-icon">${meta.emoji}</div>
+      <div class="card-title">${esc(d.title)}</div>
+      <div class="card-desc">${esc(d.desc)}</div>
+      <div class="card-arrow">
+        <span class="card-tag">${esc(d.tag)}</span>
+        <span class="arrow-btn">→</span>
+      </div>`;
+    c.appendChild(a);
+  });
+}
+
+renderCards();
+</script>
+</body>
+</html>
