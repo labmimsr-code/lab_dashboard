@@ -115,8 +115,9 @@
     font-size:12px; color:var(--text-muted);
   }
   .file-bar strong{color:var(--text); font-weight:600;}
+  .file-bar .file-actions{margin-left:auto; display:flex; gap:14px;}
   .file-bar .replace-link{
-    margin-left:auto; color:var(--primary); font-weight:600; cursor:pointer; font-size:12px; white-space:nowrap;
+    color:var(--primary); font-weight:600; cursor:pointer; font-size:12px; white-space:nowrap;
   }
 
   .table-wrap{
@@ -241,7 +242,7 @@
 
 <main id="mainArea"></main>
 
-<div class="note">Upload each month's completed Excel report to view its full detail here. The file is only read inside this page and your data stays saved in this browser until you replace it.</div>
+<div class="note">Upload each month's completed Excel report to view its full detail here. Data stays saved until you replace it — or, once a month's Drive file ID is configured, this page reads that file directly so it's always current everywhere.</div>
 
 <input type="file" id="fileInput" accept=".xlsx,.xls,.csv">
 
@@ -270,6 +271,42 @@
   ];
 
   var STORAGE_PREFIX = 'fridgeTempLog_v1_';
+
+  // ---- Shared cross-device storage (fill this in — see setup note) ----
+  // Leave blank and the page only saves locally (per-browser, like before).
+  // Paste a jsonblob.com URL here to make uploads visible on every device.
+  // Setup (~1 minute, no account needed):
+  //   1. Open this page's browser console (F12) on any device.
+  //   2. Run:
+  //        fetch('https://jsonblob.com/api/jsonBlob',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'})
+  //          .then(r=>console.log(r.headers.get('Location')))
+  //   3. Copy the URL that gets logged and paste it below.
+  //   4. Re-upload this html file everywhere it's used (or replace the one
+  //      currently hosted), so all devices point at the same URL.
+  var SHARED_STORE_URL = '';
+
+  // ---- Auto-load straight from Google Drive (for .xlsx files kept in Drive) ----
+  // Fill in an API key + each month's file ID to have the page always show
+  // the current version straight from Drive - no manual upload needed for
+  // that month. Leave a month's ID blank to keep manual upload for it.
+  // Setup (~5 minutes, one time):
+  //   1. console.cloud.google.com → create a project (free).
+  //   2. "APIs & Services" → Library → enable "Google Drive API".
+  //   3. "APIs & Services" → Credentials → Create API key.
+  //      Restrict it to "Google Drive API", and under application
+  //      restrictions add your site's URL (HTTP referrer) for safety.
+  //   4. In Drive, right-click each month's file → Share → change to
+  //      "Anyone with the link" → Viewer.
+  //   5. Open the file, copy the ID from the address bar:
+  //      drive.google.com/file/d/<COPY THIS PART>/view
+  var DRIVE_API_KEY = '';
+  var DRIVE_FILE_IDS = {
+    '2026-08': '',
+    '2026-09': '',
+    '2026-10': '',
+    '2026-11': '',
+    '2026-12': ''
+  };
 
   var state = { activeMonth: MONTHS[0].key, uploads: {} };
 
@@ -439,24 +476,73 @@
     return out ? 'alert' : 'normal';
   }
 
-  /* ---------- Local persistence (per browser) ---------- */
-  // Keeps each month's uploaded data showing until it is replaced.
-  // Note: this is stored in this browser only, not on a server, so it
-  // will not automatically appear on a different computer or browser.
+  /* ---------- Persistence: local cache + shared cross-device storage ---------- */
+  // Local cache always works offline and shows instantly. If SHARED_STORE_URL
+  // is configured, we also sync to/from it so every device sees the same data.
 
-  function loadFromStorage(){
+  function loadLocalCache(){
     try{
       MONTHS.forEach(function(m){
         var raw = localStorage.getItem(STORAGE_PREFIX + m.key);
         if(raw) state.uploads[m.key] = JSON.parse(raw);
       });
-    }catch(e){ /* localStorage unavailable - data will only last for this session */ }
+    }catch(e){ /* localStorage unavailable - falls back to shared store only */ }
   }
 
-  function saveToStorage(monthKey, data){
-    try{
-      localStorage.setItem(STORAGE_PREFIX + monthKey, JSON.stringify(data));
-    }catch(e){ /* storage full or unavailable - data still shows for this session */ }
+  function saveLocalCache(monthKey, data){
+    try{ localStorage.setItem(STORAGE_PREFIX + monthKey, JSON.stringify(data)); }catch(e){}
+  }
+
+  function loadFromCloud(callback){
+    if(!SHARED_STORE_URL){ callback(); return; }
+    fetch(SHARED_STORE_URL).then(function(r){
+      if(!r.ok) throw new Error('bad response');
+      return r.json();
+    }).then(function(remote){
+      if(remote && typeof remote === 'object'){
+        Object.keys(remote).forEach(function(k){ state.uploads[k] = remote[k]; });
+      }
+      callback();
+    }).catch(function(){
+      showToast('Could not reach shared storage — showing data saved on this device only');
+      callback();
+    });
+  }
+
+  function saveToCloud(){
+    if(!SHARED_STORE_URL) return;
+    fetch(SHARED_STORE_URL, {
+      method:'PUT',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(state.uploads)
+    }).catch(function(){
+      showToast('Saved on this device, but could not sync to other devices');
+    });
+  }
+
+  // Fetches a month's .xlsx directly from Google Drive and parses it, so
+  // every device shows whatever is currently in Drive without anyone
+  // needing to manually upload it here. callback(true) if data changed.
+  function loadFromDrive(monthKey, callback){
+    var fileId = DRIVE_FILE_IDS[monthKey];
+    if(!DRIVE_API_KEY || !fileId){ callback(false); return; }
+    var url = 'https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(fileId) + '?alt=media&key=' + encodeURIComponent(DRIVE_API_KEY);
+    fetch(url).then(function(r){
+      if(!r.ok) throw new Error('drive fetch failed: ' + r.status);
+      return r.arrayBuffer();
+    }).then(function(buf){
+      var workbook = XLSX.read(new Uint8Array(buf), {type:'array', cellDates:false});
+      var meta = MONTHS.find(function(m){ return m.key === monthKey; });
+      var parsed = parseWorkbook(workbook, meta.name + ' ' + meta.year + ' (synced from Drive)');
+      if(parsed.error){ showToast(meta.label + ': ' + parsed.error); callback(false); return; }
+      parsed.fromDrive = true;
+      state.uploads[monthKey] = parsed;
+      saveLocalCache(monthKey, parsed);
+      callback(true);
+    }).catch(function(){
+      showToast('Could not load ' + monthKey + ' from Google Drive');
+      callback(false);
+    });
   }
 
   function renderNav(){
@@ -467,7 +553,11 @@
       var hasData = !!state.uploads[m.key];
       pill.className = 'month-pill' + (m.key === state.activeMonth ? ' active' : '') + (hasData ? ' has-data' : '');
       pill.textContent = m.label;
-      pill.onclick = function(){ state.activeMonth = m.key; renderAll(); };
+      pill.onclick = function(){
+        state.activeMonth = m.key;
+        renderAll();
+        loadFromDrive(m.key, function(changed){ if(changed) renderAll(); });
+      };
       nav.appendChild(pill);
     });
   }
@@ -537,7 +627,10 @@
       '<div class="file-bar">' +
         '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>' +
         '<strong>' + data.fileName + '</strong>' +
-        '<span class="replace-link" id="replaceLink">Replace file</span>' +
+        '<div class="file-actions">' +
+          (data.fromDrive ? '<span class="replace-link" id="refreshDriveLink">Refresh</span>' : '') +
+          '<span class="replace-link" id="replaceLink">' + (data.fromDrive ? 'Upload manually instead' : 'Replace file') + '</span>' +
+        '</div>' +
       '</div>' +
       '<div class="summary-bar">' +
         '<div class="stat"><div class="num">' + logged + ' / ' + data.rows.length + '</div><div class="lbl">Days logged</div></div>' +
@@ -549,6 +642,13 @@
       '</table></div>';
 
     document.getElementById('replaceLink').onclick = function(){ document.getElementById('fileInput').click(); };
+    var refreshLink = document.getElementById('refreshDriveLink');
+    if(refreshLink){
+      refreshLink.onclick = function(){
+        showToast('Refreshing from Drive…');
+        loadFromDrive(state.activeMonth, function(changed){ if(changed) renderAll(); });
+      };
+    }
 
     document.getElementById('printTitle').textContent = data.title || ('Temperature Log Report \u2014 ' + meta.name + ' ' + meta.year);
     document.getElementById('printSub').textContent = 'Acceptable range 2\u20138\u00B0C  \u00B7  ' + logged + ' of ' + data.rows.length + ' days logged  \u00B7  ' + alerts + ' alert(s)';
@@ -571,7 +671,8 @@
         var parsed = parseWorkbook(workbook, file.name);
         if(parsed.error){ showToast(parsed.error); return; }
         state.uploads[state.activeMonth] = parsed;
-        saveToStorage(state.activeMonth, parsed);
+        saveLocalCache(state.activeMonth, parsed);
+        saveToCloud();
         renderAll();
         showToast(activeMonthMeta().label + ' report loaded');
       }catch(err){
@@ -617,8 +718,17 @@
 
   document.getElementById('btnPrint').onclick = function(){ window.print(); };
 
-  loadFromStorage();
+  loadLocalCache();
   renderAll();
+  loadFromCloud(function(){
+    renderAll();
+    // Also refresh any months whose file lives in Google Drive, so the
+    // "has data" dots and the active month are current on first load.
+    MONTHS.forEach(function(m){
+      if(!DRIVE_FILE_IDS[m.key]) return;
+      loadFromDrive(m.key, function(changed){ if(changed) renderAll(); });
+    });
+  });
 })();
 </script>
 </body>
