@@ -129,7 +129,8 @@
   table.detail{
     border-collapse:collapse;
     width:100%;
-    min-width:560px;
+    min-width:620px;
+    table-layout:fixed;
     font-size:12.5px;
   }
   table.detail th{
@@ -145,14 +146,25 @@
     border-bottom:1px solid var(--border);
     white-space:nowrap;
   }
+  /* Fixed per-column widths so every month's table lines up the same way,
+     regardless of how long or short the values in a given file happen to be. */
+  table.detail th:nth-child(1){width:98px;}
+  table.detail th:nth-child(2){width:76px;}
+  table.detail th:nth-child(3){width:64px;}
+  table.detail th:nth-child(4){width:76px;}
+  table.detail th:nth-child(5){width:64px;}
+  table.detail th:nth-child(6){width:86px;}
+  table.detail th:nth-child(7){width:auto;}
   table.detail td{
     padding:8px 10px;
     border-bottom:1px solid var(--border);
     vertical-align:top;
     font-variant-numeric:tabular-nums;
     white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
   }
-  table.detail td.remark-cell{white-space:normal; min-width:140px;}
+  table.detail td.remark-cell{white-space:normal; overflow:visible; text-overflow:clip;}
   table.detail tr:last-child td{border-bottom:none;}
   table.detail tr.row-alert td{background:var(--danger-bg);}
   table.detail tr.row-normal td{background:var(--success-bg);}
@@ -229,7 +241,7 @@
 
 <main id="mainArea"></main>
 
-<div class="note">Upload each month's completed Excel report to view its full detail here. Nothing is uploaded anywhere &mdash; the file is only read inside this page.</div>
+<div class="note">Upload each month's completed Excel report to view its full detail here. The file is only read inside this page and your data stays saved in this browser until you replace it.</div>
 
 <input type="file" id="fileInput" accept=".xlsx,.xls,.csv">
 
@@ -257,6 +269,8 @@
     {key:'2026-12', label:'Dec 2026', name:'December', year:'2026'}
   ];
 
+  var STORAGE_PREFIX = 'fridgeTempLog_v1_';
+
   var state = { activeMonth: MONTHS[0].key, uploads: {} };
 
   function iconAlert(){ return '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>'; }
@@ -265,33 +279,83 @@
 
   function activeMonthMeta(){ return MONTHS.find(function(m){ return m.key === state.activeMonth; }); }
 
+  /* ---------- Flexible header matching ---------- */
+
+  var DATE_ALIASES = ['date', 'log date', 'day', 'date logged', 'inspection date', 'วันที่'];
+  var STATUS_ALIASES = ['status', 'result', 'condition', 'สถานะ'];
+  var REMARK_ALIASES = ['remark', 'remarks', 'action', 'action taken', 'corrective action', 'comment', 'comments', 'note', 'notes', 'หมายเหตุ'];
+
+  function normalizeHeader(v){
+    return String(v || '')
+      .toLowerCase()
+      .replace(/[°ºc]/g, '')
+      .replace(/[()\/\-_.]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+  function matchesAny(norm, list){
+    return list.some(function(a){ return norm === a || norm.indexOf(a) !== -1; });
+  }
+  function isAmLabel(norm){ return /\bam\b/.test(norm) || norm.indexOf('morning') !== -1; }
+  function isPmLabel(norm){ return /\bpm\b/.test(norm) || norm.indexOf('afternoon') !== -1 || norm.indexOf('evening') !== -1; }
+
+  // Reads one row of raw cell values and tries to identify each column's role.
+  // Recognizes many header spellings (Temperature / Temp / Reading, AM/PM,
+  // Morning/Afternoon, Thai labels, Status/Result, Remark/Action/Note, etc.)
+  // and falls back to positional order (1st temp/time col = AM, 2nd = PM)
+  // when a column isn't explicitly labeled AM/PM - so older-style sheets
+  // ("Temperature", "Temperature") still work exactly as before.
+  function classifyHeaderRow(row){
+    var dateCol = -1, statusCol = -1, remarkCol = -1;
+    var namedAmTemp, namedPmTemp, namedAmTime, namedPmTime;
+    var genericTemp = [], genericTime = [];
+
+    row.forEach(function(c, ci){
+      var norm = normalizeHeader(c);
+      if(!norm) return;
+
+      if(dateCol === -1 && matchesAny(norm, DATE_ALIASES)){ dateCol = ci; return; }
+
+      if(norm.indexOf('temp') !== -1 || norm.indexOf('reading') !== -1){
+        if(isAmLabel(norm)) namedAmTemp = ci;
+        else if(isPmLabel(norm)) namedPmTemp = ci;
+        else genericTemp.push(ci);
+        return;
+      }
+      if(norm.indexOf('time') !== -1){
+        if(isAmLabel(norm)) namedAmTime = ci;
+        else if(isPmLabel(norm)) namedPmTime = ci;
+        else genericTime.push(ci);
+        return;
+      }
+      if(statusCol === -1 && matchesAny(norm, STATUS_ALIASES)){ statusCol = ci; return; }
+      if(remarkCol === -1 && matchesAny(norm, REMARK_ALIASES)){ remarkCol = ci; return; }
+    });
+
+    var amTemp = namedAmTemp !== undefined ? namedAmTemp : genericTemp.shift();
+    var pmTemp = namedPmTemp !== undefined ? namedPmTemp : genericTemp.shift();
+    var amTime = namedAmTime !== undefined ? namedAmTime : genericTime.shift();
+    var pmTime = namedPmTime !== undefined ? namedPmTime : genericTime.shift();
+
+    return { date: dateCol, amTemp: amTemp, pmTemp: pmTemp, amTime: amTime, pmTime: pmTime, status: statusCol, remark: remarkCol };
+  }
+
   function parseWorkbook(workbook, fileName){
     var sheetName = workbook.SheetNames[0];
     var ws = workbook.Sheets[sheetName];
     var grid = XLSX.utils.sheet_to_json(ws, {header:1, raw:false, defval:''});
 
-    var headerRowIdx = -1, cols = {};
+    var headerRowIdx = -1, cols = null;
     for(var i=0; i<grid.length; i++){
-      var row = grid[i];
-      var idx = row.findIndex(function(c){ return String(c).trim().toLowerCase() === 'date'; });
-      if(idx !== -1){
+      var candidate = classifyHeaderRow(grid[i]);
+      // A real header row must have a date column plus at least one temperature column.
+      if(candidate.date !== -1 && (candidate.amTemp !== undefined || candidate.pmTemp !== undefined)){
         headerRowIdx = i;
-        cols.date = idx;
-        var tempCols = [], timeCols = [], statusCol = -1, remarkCol = -1;
-        row.forEach(function(c, ci){
-          var t = String(c).trim().toLowerCase();
-          if(t === 'temperature') tempCols.push(ci);
-          if(t === 'time') timeCols.push(ci);
-          if(t.indexOf('status') !== -1) statusCol = ci;
-          if(t.indexOf('remark') !== -1 || t.indexOf('action') !== -1) remarkCol = ci;
-        });
-        cols.amTemp = tempCols[0]; cols.pmTemp = tempCols[1];
-        cols.amTime = timeCols[0]; cols.pmTime = timeCols[1];
-        cols.status = statusCol; cols.remark = remarkCol;
+        cols = candidate;
         break;
       }
     }
-    if(headerRowIdx === -1) return {error:'Could not find a "Date" column header in this file.'};
+    if(headerRowIdx === -1) return {error:'Could not find a recognizable header row (needs a Date column and at least one Temperature column) in this file.'};
 
     var title = '';
     for(var t=0; t<headerRowIdx; t++){
@@ -315,6 +379,49 @@
     return {title:title, rows:rows, fileName:fileName};
   }
 
+  /* ---------- Consistent date display ---------- */
+  // Different months' Excel files often store dates differently
+  // (8/1/26, 01-Sep-2026, 2026-09-01, ...). This normalizes whatever
+  // was parsed to one consistent "DD-Mon-YYYY" display format so every
+  // month's table looks the same. If a value can't be recognized, it's
+  // shown as-is rather than dropped.
+  var MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  function pad2(n){ return (n < 10 ? '0' : '') + n; }
+  function formatDateDisplay(raw){
+    var str = String(raw || '').trim();
+    if(!str) return '';
+    var m;
+
+    // DD-Mon-YYYY or DD Mon YYYY (e.g. "01-Sep-2026")
+    m = str.match(/^(\d{1,2})[\-\s]([A-Za-z]{3,9})[\-\s](\d{4})$/);
+    if(m){
+      var monIdx = MONTH_NAMES.findIndex(function(mn){ return mn.toLowerCase() === m[2].slice(0,3).toLowerCase(); });
+      if(monIdx !== -1) return pad2(parseInt(m[1],10)) + '-' + MONTH_NAMES[monIdx] + '-' + m[3];
+    }
+
+    // YYYY-MM-DD (ISO)
+    m = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+    if(m){
+      var mo1 = parseInt(m[2],10) - 1;
+      if(mo1 >= 0 && mo1 < 12) return pad2(parseInt(m[3],10)) + '-' + MONTH_NAMES[mo1] + '-' + m[1];
+    }
+
+    // M/D/YY or M/D/YYYY (US-style month-first, as used in some source sheets)
+    m = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+    if(m){
+      var mo2 = parseInt(m[1],10) - 1;
+      var y = m[3];
+      if(y.length === 2) y = (parseInt(y,10) < 70 ? '20' : '19') + y;
+      if(mo2 >= 0 && mo2 < 12) return pad2(parseInt(m[2],10)) + '-' + MONTH_NAMES[mo2] + '-' + y;
+    }
+
+    // Fallback: let the browser try
+    var dt = new Date(str);
+    if(!isNaN(dt.getTime())) return pad2(dt.getDate()) + '-' + MONTH_NAMES[dt.getMonth()] + '-' + dt.getFullYear();
+
+    return str;
+  }
+
   function computeStatus(row){
     if(row.statusRaw){
       var s = row.statusRaw.toLowerCase();
@@ -330,6 +437,26 @@
       if(isNaN(n) || n < MIN_TEMP || n > MAX_TEMP) out = true;
     });
     return out ? 'alert' : 'normal';
+  }
+
+  /* ---------- Local persistence (per browser) ---------- */
+  // Keeps each month's uploaded data showing until it is replaced.
+  // Note: this is stored in this browser only, not on a server, so it
+  // will not automatically appear on a different computer or browser.
+
+  function loadFromStorage(){
+    try{
+      MONTHS.forEach(function(m){
+        var raw = localStorage.getItem(STORAGE_PREFIX + m.key);
+        if(raw) state.uploads[m.key] = JSON.parse(raw);
+      });
+    }catch(e){ /* localStorage unavailable - data will only last for this session */ }
+  }
+
+  function saveToStorage(monthKey, data){
+    try{
+      localStorage.setItem(STORAGE_PREFIX + monthKey, JSON.stringify(data));
+    }catch(e){ /* storage full or unavailable - data still shows for this session */ }
   }
 
   function renderNav(){
@@ -396,7 +523,7 @@
                : status === 'normal' ? '<span class="chip normal">' + iconCheck() + ' Normal</span>'
                : '<span class="chip empty">' + iconDash() + ' &mdash;</span>';
       return '<tr class="' + rowClass + '">' +
-        '<td>' + (row.date || '&mdash;') + '</td>' +
+        '<td>' + (formatDateDisplay(row.date) || '&mdash;') + '</td>' +
         '<td>' + (row.amTemp !== '' ? row.amTemp + '&deg;C' : '&mdash;') + '</td>' +
         '<td>' + (row.amTime || '&mdash;') + '</td>' +
         '<td>' + (row.pmTemp !== '' ? row.pmTemp + '&deg;C' : '&mdash;') + '</td>' +
@@ -444,6 +571,7 @@
         var parsed = parseWorkbook(workbook, file.name);
         if(parsed.error){ showToast(parsed.error); return; }
         state.uploads[state.activeMonth] = parsed;
+        saveToStorage(state.activeMonth, parsed);
         renderAll();
         showToast(activeMonthMeta().label + ' report loaded');
       }catch(err){
@@ -471,7 +599,7 @@
     ];
     data.rows.forEach(function(row){
       var status = computeStatus(row);
-      rowsOut.push([row.date, row.amTemp, row.amTime, row.pmTemp, row.pmTime, status === 'empty' ? '' : (status === 'alert' ? 'Alert' : 'Normal'), row.remark]);
+      rowsOut.push([formatDateDisplay(row.date), row.amTemp, row.amTime, row.pmTemp, row.pmTime, status === 'empty' ? '' : (status === 'alert' ? 'Alert' : 'Normal'), row.remark]);
     });
     var csv = rowsOut.map(function(r){
       return r.map(function(cell){
@@ -489,6 +617,7 @@
 
   document.getElementById('btnPrint').onclick = function(){ window.print(); };
 
+  loadFromStorage();
   renderAll();
 })();
 </script>
