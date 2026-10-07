@@ -243,7 +243,7 @@
 
 <main id="mainArea"></main>
 
-<div class="note">This page reads each month directly from the shared Google Sheet every time it opens, so it's always current. A manual upload only applies until the page is reopened or refreshed.</div>
+<div class="note">Upload the Excel file for each month from your computer. The uploaded file is saved and shared, so everyone who opens this page sees the same latest version. To update a month, upload the new file again.</div>
 
 <input type="file" id="fileInput" accept=".xlsx,.xls,.csv">
 
@@ -272,14 +272,19 @@
   ];
 
   // v2: bumped so every device discards its old cached copies once.
-  var STORAGE_PREFIX = 'fridgeTempLog_v2_';
+  var STORAGE_PREFIX = 'fridgeTempLog_v3_';
 
-  // Old versions stored data under this prefix; clear it so stale copies never come back.
-  var OLD_STORAGE_PREFIXES = ['fridgeTempLog_v1_'];
+  // Old versions stored data under these prefixes; clear them so stale copies never come back.
+  var OLD_STORAGE_PREFIXES = ['fridgeTempLog_v1_', 'fridgeTempLog_v2_'];
 
-  // ---- Shared cross-device storage: DISABLED ----
-  // Leaving this empty means old manual uploads can no longer override the live Google Sheet.
-  var SHARED_STORE_URL = '';
+  // ---- Shared cross-device storage for uploaded files ----
+  // Each upload is saved here so every device sees the same latest file.
+  var SHARED_STORE_URL = 'https://jsonblob.com/api/jsonBlob/1344218683569504256';
+
+  // ---- Google Sheets auto-load: DISABLED ----
+  // It used to overwrite uploaded files with the (older) Sheet data after the page loaded.
+  // Set to true only if you want the Sheet to be the source again.
+  var USE_GOOGLE_SHEET = false;
 
   // ---- Auto-load straight from the shared Google Sheet ----
   // One spreadsheet, one tab (gid) per month. Public "Anyone with the link" sharing
@@ -483,22 +488,38 @@
     });
   }
 
-  function saveToCloud(){
+  // Saves ONE month: reads the shared copy first, replaces only that month, then writes it back,
+  // so uploading September never wipes out or overwrites the other months.
+  function saveToCloud(monthKey){
     if(!SHARED_STORE_URL) return;
-    fetch(SHARED_STORE_URL, {
-      method:'PUT',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify(state.uploads)
+    fetch(SHARED_STORE_URL, {cache:'no-store'}).then(function(r){
+      if(!r.ok) throw new Error('read failed');
+      return r.json();
+    }).then(function(remote){
+      if(!remote || typeof remote !== 'object') remote = {};
+      remote[monthKey] = state.uploads[monthKey];
+      return fetch(SHARED_STORE_URL, {
+        method:'PUT',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify(remote)
+      });
+    }).then(function(r){
+      if(!r.ok) throw new Error('write failed');
+      showToast('Saved and shared to all devices');
     }).catch(function(){
-      showToast('Saved on this device, but could not sync to other devices');
+      showToast('Saved on this device only - could not sync to other devices');
     });
+  }
+
+  function refreshFromCloud(){
+    loadFromCloud(function(){ renderAll(); showToast('Refreshed'); });
   }
 
   /* ---------- Load a month directly from the shared Google Sheet (public CSV export) ---------- */
 
   function loadFromDrive(monthKey, callback){
     var gid = MONTH_GIDS[monthKey];
-    if(!SHEET_ID || !gid){ callback(false); return; }
+    if(!USE_GOOGLE_SHEET || !SHEET_ID || !gid){ callback(false); return; }
     // Cache-buster (&_=timestamp) + no-store so neither Google nor the browser returns an old copy.
     var url = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID +
       '/gviz/tq?tqx=out:csv&gid=' + encodeURIComponent(gid) +
@@ -551,8 +572,8 @@
           '<div class="icon-circle">' +
             '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>' +
           '</div>' +
-          '<h3>Loading ' + meta.name + ' ' + meta.year + ' report&hellip;</h3>' +
-          '<p>If this doesn\'t load, you can upload the Excel (.xlsx) file for this month manually instead</p>' +
+          '<h3>No ' + meta.name + ' ' + meta.year + ' report yet</h3>' +
+          '<p>Upload the Excel (.xlsx) file for this month from your computer</p>' +
           '<button class="upload-btn" id="chooseFileBtn">Choose Excel file</button>' +
         '</div>';
       document.getElementById('chooseFileBtn').onclick = function(){ document.getElementById('fileInput').click(); };
@@ -620,10 +641,8 @@
     document.getElementById('replaceLink').onclick = function(){ document.getElementById('fileInput').click(); };
     // Refresh is now always shown, so a stale manual copy can always be replaced by the live sheet.
     document.getElementById('refreshDriveLink').onclick = function(){
-      showToast('Refreshing from Google Sheets…');
-      loadFromDrive(state.activeMonth, function(changed){
-        if(changed){ renderAll(); showToast('Updated from Google Sheets'); }
-      });
+      showToast('Refreshing…');
+      refreshFromCloud();
     };
 
     document.getElementById('printTitle').textContent = data.title || ('Temperature Log Report \u2014 ' + meta.name + ' ' + meta.year);
@@ -648,9 +667,9 @@
         if(parsed.error){ showToast(parsed.error); return; }
         state.uploads[state.activeMonth] = parsed;
         saveLocalCache(state.activeMonth, parsed);
-        saveToCloud();
+        saveToCloud(state.activeMonth);
         renderAll();
-        showToast(activeMonthMeta().label + ' report loaded (manual, this device only)');
+        showToast(activeMonthMeta().label + ' report loaded');
       }catch(err){
         showToast('Could not read that file');
       }
@@ -694,10 +713,10 @@
 
   document.getElementById('btnPrint').onclick = function(){ window.print(); };
 
-  // Re-sync from the sheet whenever the page becomes visible again (e.g. switching back to the tab/app).
+  // Re-sync the shared uploads whenever the page becomes visible again (e.g. switching back to the tab/app).
   document.addEventListener('visibilitychange', function(){
     if(document.visibilityState === 'visible'){
-      loadFromDrive(state.activeMonth, function(changed){ if(changed) renderAll(); });
+      loadFromCloud(function(){ renderAll(); });
     }
   });
 
