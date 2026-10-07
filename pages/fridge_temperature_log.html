@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>Fridge Temperature Log</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
@@ -240,7 +243,7 @@
 
 <main id="mainArea"></main>
 
-<div class="note">This page reads each month directly from the shared Google Sheet, so it's always current for everyone. You can still upload a file manually to override a month on this device only.</div>
+<div class="note">This page reads each month directly from the shared Google Sheet every time it opens, so it's always current. A manual upload only applies until the page is reopened or refreshed.</div>
 
 <input type="file" id="fileInput" accept=".xlsx,.xls,.csv">
 
@@ -268,10 +271,15 @@
     {key:'2026-12', label:'Dec 2026', name:'December', year:'2026'}
   ];
 
-  var STORAGE_PREFIX = 'fridgeTempLog_v1_';
+  // v2: bumped so every device discards its old cached copies once.
+  var STORAGE_PREFIX = 'fridgeTempLog_v2_';
 
-  // ---- Shared cross-device storage (manual-upload overrides only) ----
-  var SHARED_STORE_URL = 'https://jsonblob.com/api/jsonBlob/1344218683569504256';
+  // Old versions stored data under this prefix; clear it so stale copies never come back.
+  var OLD_STORAGE_PREFIXES = ['fridgeTempLog_v1_'];
+
+  // ---- Shared cross-device storage: DISABLED ----
+  // Leaving this empty means old manual uploads can no longer override the live Google Sheet.
+  var SHARED_STORE_URL = '';
 
   // ---- Auto-load straight from the shared Google Sheet ----
   // One spreadsheet, one tab (gid) per month. Public "Anyone with the link" sharing
@@ -437,7 +445,15 @@
     return out ? 'alert' : 'normal';
   }
 
-  /* ---------- Persistence: local cache + shared cross-device storage (manual overrides) ---------- */
+  /* ---------- Persistence: local cache only (fallback if the sheet can't be reached) ---------- */
+
+  function clearOldCaches(){
+    try{
+      OLD_STORAGE_PREFIXES.forEach(function(prefix){
+        MONTHS.forEach(function(m){ localStorage.removeItem(prefix + m.key); });
+      });
+    }catch(e){}
+  }
 
   function loadLocalCache(){
     try{
@@ -454,7 +470,7 @@
 
   function loadFromCloud(callback){
     if(!SHARED_STORE_URL){ callback(); return; }
-    fetch(SHARED_STORE_URL).then(function(r){
+    fetch(SHARED_STORE_URL, {cache:'no-store'}).then(function(r){
       if(!r.ok) throw new Error('bad response');
       return r.json();
     }).then(function(remote){
@@ -483,8 +499,11 @@
   function loadFromDrive(monthKey, callback){
     var gid = MONTH_GIDS[monthKey];
     if(!SHEET_ID || !gid){ callback(false); return; }
-    var url = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID + '/gviz/tq?tqx=out:csv&gid=' + encodeURIComponent(gid);
-    fetch(url).then(function(r){
+    // Cache-buster (&_=timestamp) + no-store so neither Google nor the browser returns an old copy.
+    var url = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID +
+      '/gviz/tq?tqx=out:csv&gid=' + encodeURIComponent(gid) +
+      '&_=' + Date.now();
+    fetch(url, {cache:'no-store'}).then(function(r){
       if(!r.ok) throw new Error('sheet fetch failed: ' + r.status);
       return r.text();
     }).then(function(csvText){
@@ -585,7 +604,7 @@
         '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>' +
         '<strong>' + data.fileName + '</strong>' +
         '<div class="file-actions">' +
-          (data.fromDrive ? '<span class="replace-link" id="refreshDriveLink">Refresh</span>' : '') +
+          '<span class="replace-link" id="refreshDriveLink">Refresh</span>' +
           '<span class="replace-link" id="replaceLink">' + (data.fromDrive ? 'Upload manually instead' : 'Replace file') + '</span>' +
         '</div>' +
       '</div>' +
@@ -599,13 +618,13 @@
       '</table></div>';
 
     document.getElementById('replaceLink').onclick = function(){ document.getElementById('fileInput').click(); };
-    var refreshLink = document.getElementById('refreshDriveLink');
-    if(refreshLink){
-      refreshLink.onclick = function(){
-        showToast('Refreshing from Google Sheets…');
-        loadFromDrive(state.activeMonth, function(changed){ if(changed) renderAll(); });
-      };
-    }
+    // Refresh is now always shown, so a stale manual copy can always be replaced by the live sheet.
+    document.getElementById('refreshDriveLink').onclick = function(){
+      showToast('Refreshing from Google Sheets…');
+      loadFromDrive(state.activeMonth, function(changed){
+        if(changed){ renderAll(); showToast('Updated from Google Sheets'); }
+      });
+    };
 
     document.getElementById('printTitle').textContent = data.title || ('Temperature Log Report \u2014 ' + meta.name + ' ' + meta.year);
     document.getElementById('printSub').textContent = 'Acceptable range 2\u20138\u00B0C  \u00B7  ' + logged + ' of ' + data.rows.length + ' days logged  \u00B7  ' + alerts + ' alert(s)';
@@ -631,7 +650,7 @@
         saveLocalCache(state.activeMonth, parsed);
         saveToCloud();
         renderAll();
-        showToast(activeMonthMeta().label + ' report loaded (manual override)');
+        showToast(activeMonthMeta().label + ' report loaded (manual, this device only)');
       }catch(err){
         showToast('Could not read that file');
       }
@@ -675,6 +694,14 @@
 
   document.getElementById('btnPrint').onclick = function(){ window.print(); };
 
+  // Re-sync from the sheet whenever the page becomes visible again (e.g. switching back to the tab/app).
+  document.addEventListener('visibilitychange', function(){
+    if(document.visibilityState === 'visible'){
+      loadFromDrive(state.activeMonth, function(changed){ if(changed) renderAll(); });
+    }
+  });
+
+  clearOldCaches();
   loadLocalCache();
   renderAll();
   loadFromCloud(function(){
