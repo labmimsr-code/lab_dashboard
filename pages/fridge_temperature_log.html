@@ -133,7 +133,7 @@
   table.detail{
     border-collapse:collapse;
     width:100%;
-    min-width:620px;
+    min-width:480px;
     table-layout:fixed;
     font-size:12.5px;
   }
@@ -155,8 +155,7 @@
   table.detail th:nth-child(3){width:64px;}
   table.detail th:nth-child(4){width:76px;}
   table.detail th:nth-child(5){width:64px;}
-  table.detail th:nth-child(6){width:86px;}
-  table.detail th:nth-child(7){width:auto;}
+  table.detail th:nth-child(6){width:auto;}
   table.detail td{
     padding:8px 10px;
     border-bottom:1px solid var(--border);
@@ -166,7 +165,6 @@
     overflow:hidden;
     text-overflow:ellipsis;
   }
-  table.detail td.remark-cell{white-space:normal; overflow:visible; text-overflow:clip;}
   table.detail tr:last-child td{border-bottom:none;}
   table.detail tr.row-alert td{background:var(--danger-bg);}
   table.detail tr.row-normal td{background:var(--success-bg);}
@@ -243,7 +241,7 @@
 
 <main id="mainArea"></main>
 
-<div class="note">Upload the Excel file for each month from your computer. The uploaded file is saved and shared, so everyone who opens this page sees the same latest version. To update a month, upload the new file again.</div>
+<div class="note">August, September and October 2026 are built in and always shown. For November and December, upload the Excel file from your computer; it is saved and shared so everyone sees the same latest version.</div>
 
 <input type="file" id="fileInput" accept=".xlsx,.xls,.csv">
 
@@ -297,6 +295,10 @@
     '2026-11': '2013489874',
     '2026-12': '1290558150'
   };
+
+  // Aug-Oct 2026 are built into the page permanently (no upload needed, cannot be overwritten).
+  var BUILTIN = {"2026-08":{"title":"Temperature Log Report - MRML - S4 LAB - August 2026","rows":[{"date":"2026-08-01","amTemp":"","amTime":"","pmTemp":"","pmTime":"","statusRaw":"","remark":""},{"date":"2026-08-02","amTemp":"","amTime":"","pmTemp":"","pmTime":"","statusRaw":"","remark":""},{"date":"2026-08-03","amTemp":"","amTime":"","pmTemp":"","pmTime":"","statusRaw":"","remark":""},{"date":"2026-08-04","amTemp":"","amTime":"","pmTemp":"6","pmTime":"16:09","statusRaw":"Normal","remark":""},{"date":"2026-08-05","amTemp":"","amTime":"","pmTemp":"4","pmTime":"13:46","statusRaw":"Normal","remark":""},{"date":"2026-08-06","amTemp":"5","amTime":"08:29","pmTemp":"7","pmTime":"13:46","statusRaw":"Normal","remark":""},{"date":"2026-08-07","amTemp":"4","amTime":"08:01","pmTemp":"","pmTime":"","statusRaw":"Normal","remark":""},{"date":"2026-08-08","amTemp":"8","amTime":"08:32","pmTemp":"8","pmTime":"13:49","statusRaw":"Normal","remark":""},{"date":"2026-08-09","amTemp":"6","amTime":"07:52","pmTemp":"","pmTime":"","statusRaw":"Normal","remark":""},{"date":"2026-08-10","amTemp":"5","amTime":"08:00","pmTemp":"9","pmTime":"13:38","statusRaw":"Alert","remark":""},{"date":"2026-08-11","amTemp":"9","amTime":"08:07","pmTemp":"9","pmTime":"14:57","statusRaw":"Alert","remark":""},{"date":"2026-08-12","amTemp":"13","amTime":"08:11","pmTemp":"4","pmTime":"14:07","statusRaw":"Alert","remark":""},{"date":"2026-08-13","amTemp":"","amTime":"","pmTemp":"16","pmTime":"14:00","statusRaw":"Alert","remark":""},{"date":"2026-08-14","amTemp":"14","amTime":"08:22","pmTemp":"22","pmTime":"14:00","statusRaw":"Alert","remark":""},{"date":"2026-08-15","amTemp":"16","amTime":"08:14","pmTemp":"17","pmTime":"13:59","statusRaw":"Alert","remark":""},{"date":"2026-08-16","amTemp":"9","amTime":"08:15","pmTemp":"4","pmTime":"14:07","statusRaw":"Alert","remark":""},{"date":"2026-08-17","amTemp":"8","amTime":"07:54","pmTemp":"6","pmTime":"13:51","statusRaw":"Normal","remark":""},{"date":"2026-08-18","amTemp":"3","amTime":"07:54","pmTemp":"4","pmTime":"13:54","statusRaw":"Normal","remark":""},{"date":"2026-08-19","amTemp":"5","amTime":"08:47","pmTemp":"4","pmTime":"13:56","statusRaw":"Normal","remark":""},{"date":"2026-08-20","amTemp":"4","amTime":"08:04","pmTemp":"5","pmTime":"14:05","statusRaw":"Normal","remark":""},{"date":"2026-08-21","amTemp":"13","amTime":"08:13","pmTemp":"6","pmTime":"13:47","statusRaw":"Alert","remark":""},{"date":"2026-08-22","amTemp":"7","amTime":"08:03","pmTemp":"5","pmTime":"13:41","statusRaw":"Normal","remark":""},{"date":"2026-08-23","amTemp":"","amTime":"","pmTemp":"4","pmTime":"13:58","statusRaw":"Normal","remark":""},{"date":"2026-08-24","amTemp":"10","amTime":"07:59","pmTemp":"7","pmTime":"13:54","statusRaw":"Alert","remark":""},{"date":"2026-08-25","amTemp":"7","amTime":"07:58","pmTemp":"8","pmTime":"13:53","statusRaw":"Normal","remark":""},{"date":"2026-08-26","amTemp":"8","amTime":"08:00","pmTemp":"5","pmTime":"13:49","statusRaw":"Normal","remark":""},{"date":"2026-08-27","amTemp":"13","amTime":"07:54","pmTemp":"5","pmTime":"13:46","statusRaw":"Alert","remark":""},{"date":"2026-08-28","amTemp":"14","amTime":"07:55","pmTemp":"5","pmTime":"13:56","statusRaw":"Alert","remark":""},{"date":"2026-08-29","amTemp":"10","amTime":"07:57","pmTemp":"5","pmTime":"13:50","statusRaw":"Alert","remark":""},{"date":"2026-08-30","amTemp":"15","amTime":"08:02","pmTemp":"4","pmTime":"14:13","statusRaw":"Alert","remark":""},{"date":"2026-08-31","amTemp":"14","amTime":"07:59","pmTemp":"3","pmTime":"13:49","statusRaw":"Alert","remark":""}],"fileName":"August 2026 - permanent record","builtIn":true},"2026-09":{"title":"Temperature Log - MRML - S4 LAB - September 2026","rows":[{"date":"2026-09-01","amTemp":"14","amTime":"08:07","pmTemp":"3","pmTime":"13:55","statusRaw":"Alert","remark":""},{"date":"2026-09-02","amTemp":"8","amTime":"07:56","pmTemp":"5","pmTime":"13:59","statusRaw":"Normal","remark":""},{"date":"2026-09-03","amTemp":"10","amTime":"07:55","pmTemp":"6","pmTime":"13:53","statusRaw":"Alert","remark":""},{"date":"2026-09-04","amTemp":"12","amTime":"08:17","pmTemp":"7","pmTime":"14:01","statusRaw":"Alert","remark":""},{"date":"2026-09-05","amTemp":"5","amTime":"08:07","pmTemp":"7","pmTime":"13:50","statusRaw":"Normal","remark":""},{"date":"2026-09-06","amTemp":"5","amTime":"07:56","pmTemp":"6","pmTime":"15:37","statusRaw":"Normal","remark":""},{"date":"2026-09-07","amTemp":"4","amTime":"07:58","pmTemp":"4","pmTime":"13:47","statusRaw":"Normal","remark":""},{"date":"2026-09-08","amTemp":"14","amTime":"08:04","pmTemp":"6","pmTime":"13:41","statusRaw":"Alert","remark":""},{"date":"2026-09-09","amTemp":"5","amTime":"07:59","pmTemp":"6","pmTime":"13:48","statusRaw":"Normal","remark":""},{"date":"2026-09-10","amTemp":"3","amTime":"07:51","pmTemp":"3","pmTime":"13:39","statusRaw":"Normal","remark":""},{"date":"2026-09-11","amTemp":"8","amTime":"07:51","pmTemp":"5","pmTime":"13:45","statusRaw":"Normal","remark":""},{"date":"2026-09-12","amTemp":"4","amTime":"07:44","pmTemp":"5","pmTime":"13:55","statusRaw":"Normal","remark":""},{"date":"2026-09-13","amTemp":"6","amTime":"07:55","pmTemp":"3","pmTime":"13:45","statusRaw":"Normal","remark":""},{"date":"2026-09-14","amTemp":"5","amTime":"07:26","pmTemp":"4","pmTime":"13:41","statusRaw":"Normal","remark":""},{"date":"2026-09-15","amTemp":"6","amTime":"08:04","pmTemp":"5","pmTime":"13:42","statusRaw":"Normal","remark":""},{"date":"2026-09-16","amTemp":"5","amTime":"07:56","pmTemp":"5","pmTime":"13:47","statusRaw":"Normal","remark":""},{"date":"2026-09-17","amTemp":"6","amTime":"07:55","pmTemp":"10","pmTime":"13:46","statusRaw":"Alert","remark":""},{"date":"2026-09-18","amTemp":"6","amTime":"08:03","pmTemp":"8","pmTime":"13:46","statusRaw":"Normal","remark":""},{"date":"2026-09-19","amTemp":"10","amTime":"07:55","pmTemp":"11","pmTime":"13:51","statusRaw":"Alert","remark":""},{"date":"2026-09-20","amTemp":"10","amTime":"08:16","pmTemp":"12","pmTime":"13:35","statusRaw":"Alert","remark":""},{"date":"2026-09-21","amTemp":"8","amTime":"08:07","pmTemp":"6","pmTime":"13:53","statusRaw":"Normal","remark":""},{"date":"2026-09-22","amTemp":"6","amTime":"08:00","pmTemp":"4","pmTime":"13:59","statusRaw":"Normal","remark":""},{"date":"2026-09-23","amTemp":"7","amTime":"07:56","pmTemp":"6","pmTime":"13:54","statusRaw":"Normal","remark":""},{"date":"2026-09-24","amTemp":"5","amTime":"07:53","pmTemp":"5","pmTime":"14:02","statusRaw":"Normal","remark":""},{"date":"2026-09-25","amTemp":"3","amTime":"07:48","pmTemp":"4","pmTime":"13:47","statusRaw":"Normal","remark":""},{"date":"2026-09-26","amTemp":"6","amTime":"08:13","pmTemp":"5","pmTime":"13:55","statusRaw":"Normal","remark":""},{"date":"2026-09-27","amTemp":"4","amTime":"07:39","pmTemp":"6","pmTime":"14:22","statusRaw":"Normal","remark":""},{"date":"2026-09-28","amTemp":"3","amTime":"07:44","pmTemp":"6","pmTime":"13:36","statusRaw":"Normal","remark":""},{"date":"2026-09-29","amTemp":"6","amTime":"07:49","pmTemp":"5","pmTime":"13:49","statusRaw":"Normal","remark":""},{"date":"2026-09-30","amTemp":"5","amTime":"07:56","pmTemp":"6","pmTime":"13:56","statusRaw":"Normal","remark":""}],"fileName":"September 2026 - permanent record","builtIn":true},"2026-10":{"title":"Temperature Log - MRML - S4 LAB - October 2026","rows":[{"date":"2026-10-01","amTemp":"5","amTime":"07:54","pmTemp":"4","pmTime":"13:53","statusRaw":"Normal","remark":""},{"date":"2026-10-02","amTemp":"7","amTime":"07:50","pmTemp":"2","pmTime":"13:54","statusRaw":"Normal","remark":""},{"date":"2026-10-03","amTemp":"8","amTime":"07:56","pmTemp":"5","pmTime":"13:45","statusRaw":"Normal","remark":""},{"date":"2026-10-04","amTemp":"7","amTime":"07:53","pmTemp":"7","pmTime":"13:40","statusRaw":"Normal","remark":""},{"date":"2026-10-05","amTemp":"7","amTime":"07:57","pmTemp":"7","pmTime":"13:52","statusRaw":"Normal","remark":""},{"date":"2026-10-06","amTemp":"7","amTime":"07:52","pmTemp":"4","pmTime":"13:48","statusRaw":"Normal","remark":""},{"date":"2026-10-07","amTemp":"6","amTime":"07:58","pmTemp":"3","pmTime":"13:48","statusRaw":"Normal","remark":""},{"date":"2026-10-08","amTemp":"7","amTime":"08:03","pmTemp":"2","pmTime":"13:51","statusRaw":"Normal","remark":""},{"date":"2026-10-09","amTemp":"5","amTime":"08:03","pmTemp":"7","pmTime":"13:49","statusRaw":"Normal","remark":""},{"date":"2026-10-10","amTemp":"6","amTime":"07:54","pmTemp":"7","pmTime":"13:45","statusRaw":"Normal","remark":""},{"date":"2026-10-11","amTemp":"4","amTime":"07:57","pmTemp":"5","pmTime":"13:43","statusRaw":"Normal","remark":""},{"date":"2026-10-12","amTemp":"5","amTime":"07:48","pmTemp":"4","pmTime":"13:53","statusRaw":"Normal","remark":""},{"date":"2026-10-13","amTemp":"5","amTime":"07:57","pmTemp":"4","pmTime":"13:52","statusRaw":"Normal","remark":""},{"date":"2026-10-14","amTemp":"5","amTime":"07:53","pmTemp":"4","pmTime":"13:52","statusRaw":"Normal","remark":""},{"date":"2026-10-15","amTemp":"6","amTime":"07:50","pmTemp":"3","pmTime":"13:51","statusRaw":"Normal","remark":""},{"date":"2026-10-16","amTemp":"5","amTime":"07:55","pmTemp":"6","pmTime":"14:04","statusRaw":"Normal","remark":""},{"date":"2026-10-17","amTemp":"8","amTime":"09:46","pmTemp":"6","pmTime":"13:59","statusRaw":"Normal","remark":""},{"date":"2026-10-18","amTemp":"4","amTime":"07:48","pmTemp":"6","pmTime":"14:11","statusRaw":"Normal","remark":""},{"date":"2026-10-19","amTemp":"8","amTime":"07:44","pmTemp":"4","pmTime":"13:44","statusRaw":"Normal","remark":""},{"date":"2026-10-20","amTemp":"5","amTime":"07:52","pmTemp":"5","pmTime":"14:06","statusRaw":"Normal","remark":""},{"date":"2026-10-21","amTemp":"8","amTime":"07:49","pmTemp":"4","pmTime":"14:28","statusRaw":"Normal","remark":""},{"date":"2026-10-22","amTemp":"6","amTime":"07:52","pmTemp":"9","pmTime":"13:41","statusRaw":"Alert","remark":""},{"date":"2026-10-23","amTemp":"5","amTime":"07:53","pmTemp":"4","pmTime":"13:55","statusRaw":"Normal","remark":""},{"date":"2026-10-24","amTemp":"7","amTime":"07:51","pmTemp":"6","pmTime":"13:34","statusRaw":"Normal","remark":""},{"date":"2026-10-25","amTemp":"6","amTime":"07:52","pmTemp":"4","pmTime":"13:51","statusRaw":"Normal","remark":""},{"date":"2026-10-26","amTemp":"7","amTime":"07:52","pmTemp":"5","pmTime":"13:54","statusRaw":"Normal","remark":""},{"date":"2026-10-27","amTemp":"6","amTime":"08:09","pmTemp":"6","pmTime":"13:52","statusRaw":"Normal","remark":""},{"date":"2026-10-28","amTemp":"3","amTime":"08:01","pmTemp":"5","pmTime":"13:52","statusRaw":"Normal","remark":""},{"date":"2026-10-29","amTemp":"6","amTime":"07:55","pmTemp":"8","pmTime":"13:51","statusRaw":"Normal","remark":""},{"date":"2026-10-30","amTemp":"6","amTime":"08:01","pmTemp":"6","pmTime":"13:53","statusRaw":"Normal","remark":""},{"date":"2026-10-31","amTemp":"7","amTime":"07:58","pmTemp":"6","pmTime":"13:55","statusRaw":"Normal","remark":""}],"fileName":"October 2026 - permanent record","builtIn":true}};
+  function applyBuiltIn(){ Object.keys(BUILTIN).forEach(function(k){ state.uploads[k] = BUILTIN[k]; }); }
 
   var state = { activeMonth: MONTHS[0].key, uploads: {} };
 
@@ -467,6 +469,7 @@
         if(raw) state.uploads[m.key] = JSON.parse(raw);
       });
     }catch(e){}
+    applyBuiltIn();
   }
 
   function saveLocalCache(monthKey, data){
@@ -482,8 +485,10 @@
       if(remote && typeof remote === 'object'){
         Object.keys(remote).forEach(function(k){ state.uploads[k] = remote[k]; });
       }
+      applyBuiltIn();
       callback();
     }).catch(function(){
+      applyBuiltIn();
       callback();
     });
   }
@@ -616,7 +621,6 @@
         '<td>' + (row.pmTemp !== '' ? row.pmTemp + '&deg;C' : '&mdash;') + '</td>' +
         '<td>' + (row.pmTime || '&mdash;') + '</td>' +
         '<td>' + chip + '</td>' +
-        '<td class="remark-cell">' + (row.remark || '') + '</td>' +
       '</tr>';
     }).join('');
 
@@ -624,26 +628,28 @@
       '<div class="file-bar">' +
         '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>' +
         '<strong>' + data.fileName + '</strong>' +
+        (data.builtIn ? '' :
         '<div class="file-actions">' +
           '<span class="replace-link" id="refreshDriveLink">Refresh</span>' +
           '<span class="replace-link" id="replaceLink">' + (data.fromDrive ? 'Upload manually instead' : 'Replace file') + '</span>' +
-        '</div>' +
+        '</div>') +
       '</div>' +
       '<div class="summary-bar">' +
         '<div class="stat"><div class="num">' + logged + ' / ' + data.rows.length + '</div><div class="lbl">Days logged</div></div>' +
         '<div class="stat ' + (alerts>0?'alert':'ok') + '"><div class="num">' + alerts + '</div><div class="lbl">Out-of-range alerts</div></div>' +
       '</div>' +
       '<div class="table-wrap"><table class="detail">' +
-        '<thead><tr><th>Date</th><th>AM Temp</th><th>AM Time</th><th>PM Temp</th><th>PM Time</th><th>Status</th><th>Remark</th></tr></thead>' +
+        '<thead><tr><th>Date</th><th>AM Temp</th><th>AM Time</th><th>PM Temp</th><th>PM Time</th><th>Status</th></tr></thead>' +
         '<tbody>' + rowsHtml + '</tbody>' +
       '</table></div>';
 
-    document.getElementById('replaceLink').onclick = function(){ document.getElementById('fileInput').click(); };
-    // Refresh is now always shown, so a stale manual copy can always be replaced by the live sheet.
-    document.getElementById('refreshDriveLink').onclick = function(){
-      showToast('Refreshing…');
-      refreshFromCloud();
-    };
+    if(!data.builtIn){
+      document.getElementById('replaceLink').onclick = function(){ document.getElementById('fileInput').click(); };
+      document.getElementById('refreshDriveLink').onclick = function(){
+        showToast('Refreshing…');
+        refreshFromCloud();
+      };
+    }
 
     document.getElementById('printTitle').textContent = data.title || ('Temperature Log Report \u2014 ' + meta.name + ' ' + meta.year);
     document.getElementById('printSub').textContent = 'Acceptable range 2\u20138\u00B0C  \u00B7  ' + logged + ' of ' + data.rows.length + ' days logged  \u00B7  ' + alerts + ' alert(s)';
@@ -658,6 +664,7 @@
   }
 
   function handleFile(file){
+    if(BUILTIN[state.activeMonth]) return;
     var reader = new FileReader();
     reader.onload = function(e){
       try{
@@ -691,11 +698,11 @@
       [data.title || ('Temperature Log Report - ' + meta.name + ' ' + meta.year)],
       ['Acceptable temperature is 2 - 8 C'],
       [],
-      ['Date','AM Temperature','AM Time','PM Temperature','PM Time','Status','Remark/Action']
+      ['Date','AM Temperature','AM Time','PM Temperature','PM Time','Status']
     ];
     data.rows.forEach(function(row){
       var status = computeStatus(row);
-      rowsOut.push([formatDateDisplay(row.date), row.amTemp, row.amTime, row.pmTemp, row.pmTime, status === 'empty' ? '' : (status === 'alert' ? 'Alert' : 'Normal'), row.remark]);
+      rowsOut.push([formatDateDisplay(row.date), row.amTemp, row.amTime, row.pmTemp, row.pmTime, status === 'empty' ? '' : (status === 'alert' ? 'Alert' : 'Normal')]);
     });
     var csv = rowsOut.map(function(r){
       return r.map(function(cell){
